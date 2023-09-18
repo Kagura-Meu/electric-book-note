@@ -532,3 +532,51 @@ $ git rebase --onto master test test02
 ![3.5.2-b 截取变基后](flowchart/3.5.2-b 截取变基后.svg)
 
 <font color='red'>tips：尽量不要对远程仓库已有的分支提交记录进行变基，不然当其它成员本地存在变基前版本并进行了后续修改的话，提交记录会很乱</font>
+
+## 4 Git服务器
+
+#### 4.1 协议
+
+协议分为本地协议、HTTP协议和SSH协议。常规环境推荐HTTP协议，保密需求推荐SSH协议。
+
+#### 4.2 在服务器上搭建Git
+
+##### 4.2.1 裸仓库搭建
+
+```shell
+$ git clone --bare my_project my_project.git #克隆出一个新的裸仓库
+$ scp -r my_project.git user@git.example.com:/opt/git #把裸仓库放到服务器上
+$ ssh user@git.example.com
+$ cd /opt/git/my_project.git
+$ git init --bare --shared #连上服务器并初始化仓库， --shared开放写权限
+
+$ git clone git@gitserver:/opt/git/my_project.git #其他用户拉去仓库（先得上传公钥认证）
+```
+
+#### 4.3 配置服务器
+
+##### 4.3.1 SSH方式配置
+
+```shell
+$ sudo adduser git #创建系统用户git
+$ su git #切换用户
+$ mkdir .ssh && chmod 700 .ssh 
+$ touch .ssh/authorized_keys && chmod 600 .ssh/authorized_keys
+$ cat /tmp/id_rsa.yuuma.pub >> ~/.ssh/authorized_keys #把参与用户的公钥添加到authorized_keys文件末尾
+```
+
+#### 4.4 Git守护进程
+
+Git守护进程可以给仓库提供只读无需授权服务，可应对大量只读需求环境
+
+```shell
+$ git daemon --reuseaddr --base-path=/opt/git/ /opt/git/ #开启守护进程
+# --resueaddr 允许服务器在无需等待旧连接超时的情况下重启
+# --base-path 允许用户在未完全指定路径下克隆项目
+# 占用端口9418
+
+$ initctl start local-git-daemon #不重启系统直接重启守护进程
+
+$ touch /opt/git/mt_project.git/git-daemon-export-ok #在指定仓库下创建git-daemon-export-ok文件可以使仓库提供无需授权的项目访问服务
+```
+
